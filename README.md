@@ -18,7 +18,7 @@ My personal dotfiles configuration managed with GNU Stow.
 Clone this repository to my preferred location (recommended: `~/.config/dots`):
 
 ```bash
-git clone https://github.com/grebgell/dots.git ~/.config/dots
+git clone https://github.com/gregbell/dots.git ~/.config/dots
 cd ~/.config/dots
 ```
 
