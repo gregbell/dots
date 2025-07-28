@@ -28,4 +28,3 @@ if [[ -d "$XDG_CONFIG_HOME/zsh/conf.d" ]]; then
 fi
 
 
-alias claude="/home/greg/.claude/local/claude"
