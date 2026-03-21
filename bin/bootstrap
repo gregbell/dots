@@ -51,6 +51,9 @@ detect_platform() {
           ubuntu|debian)
             echo "debian"
             ;;
+          fedora)
+            echo "fedora"
+            ;;
           *)
             log_error "Unsupported Linux distribution: $ID"
             exit 1
@@ -85,6 +88,11 @@ get_packages() {
       # starship, zoxide, yazi need special handling
       echo "git curl wget tmux zsh unzip jq stow bat exa ripgrep fd-find git-delta-musl fzf neovim gh lazygit"
       ;;
+    fedora)
+      # fd binary is 'fd' despite package being 'fd-find' (unlike Debian)
+      # eza, starship, lazygit, yazi need special handling (not in default repos)
+      echo "git curl wget tmux zsh unzip jq stow bat ripgrep fd-find git-delta fzf zoxide neovim gh"
+      ;;
   esac
 }
 
@@ -100,6 +108,9 @@ get_pkg_manager() {
       ;;
     debian)
       echo "sudo apt install -y"
+      ;;
+    fedora)
+      echo "sudo dnf install -y --skip-unavailable"
       ;;
   esac
 }
@@ -141,6 +152,12 @@ check_package_manager() {
         sudo apt update
       fi
       ;;
+    fedora)
+      if ! command -v dnf &> /dev/null; then
+        log_error "dnf not found. Are you on Fedora?"
+        exit 1
+      fi
+      ;;
   esac
 }
 
@@ -154,9 +171,26 @@ install_packages() {
   
   if [[ "$DRY_RUN" == "true" ]]; then
     log_info "Would run: $install_cmd $packages"
+    if [[ "$platform" == "fedora" ]]; then
+      log_info "Would install starship via curl"
+      log_info "Would install eza: dnf install --enablerepo=updates-testing eza"
+      log_info "Would install lazygit via COPR: dnf copr enable atim/lazygit && dnf install lazygit"
+      log_info "Would install yazi via COPR: dnf copr enable lihaohong/yazi && dnf install yazi"
+    fi
   else
+    # Special handling for Fedora packages that need different treatment
+    if [[ "$platform" == "fedora" ]]; then
+      $install_cmd $packages
+      log_info "Installing starship via curl..."
+      curl -sS https://starship.rs/install.sh | sh -s -- --yes
+      log_info "Installing eza from updates-testing..."
+      sudo dnf install -y --enablerepo=updates-testing eza || log_warning "Failed to install eza, continuing..."
+      log_info "Installing lazygit via COPR (atim/lazygit)..."
+      sudo dnf copr enable -y atim/lazygit && sudo dnf install -y lazygit || log_warning "Failed to install lazygit via COPR, continuing..."
+      log_info "Installing yazi via COPR (lihaohong/yazi)..."
+      sudo dnf copr enable -y lihaohong/yazi && sudo dnf install -y yazi || log_warning "Failed to install yazi via COPR, continuing..."
     # Special handling for Debian packages that need different treatment
-    if [[ "$platform" == "debian" ]]; then
+    elif [[ "$platform" == "debian" ]]; then
       # Install packages that are available
       for pkg in $packages; do
         case "$pkg" in
@@ -201,7 +235,18 @@ main() {
   
   # Install packages
   install_packages "$platform"
-  
+
+  # Set default shell to zsh on Linux if not already set
+  if [[ "$platform" != "macos" && "$SHELL" != "$(which zsh)" ]]; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+      log_info "Would set default shell to zsh: chsh -s $(which zsh)"
+    else
+      log_info "Setting default shell to zsh..."
+      chsh -s "$(which zsh)"
+      log_success "Default shell set to zsh (takes effect on next login)"
+    fi
+  fi
+
   if [[ "$DRY_RUN" == "true" ]]; then
     log_info "Dry run complete. No changes were made."
   else
