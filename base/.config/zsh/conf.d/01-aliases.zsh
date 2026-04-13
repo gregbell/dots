@@ -200,3 +200,6 @@ alias src="cd ~/src"
 
 # Process management
 alias fkill='kill $(ps aux | fzf | awk "{print \$2}")'
+
+# Kubernetes
+alias k='kubectl'
